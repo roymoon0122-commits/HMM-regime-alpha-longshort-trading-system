@@ -1,0 +1,17 @@
+# ── Alpaca 연동 / 데이터 ──────────────────────────
+alpaca-py
+python-dotenv
+pandas
+numpy
+lxml
+pyarrow
+requests
+
+# ── HMM 알파 (Coin-trader 이식) ───────────────────
+hmmlearn
+scikit-learn
+joblib
+
+# ── 시각화 ────────────────────────────────────────
+matplotlib
+plotly

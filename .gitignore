@@ -1,0 +1,46 @@
+# === Stock-trader 프로젝트 전용 ===
+
+# API 키
+.env
+keys/*.pem
+
+# 가상환경
+venv/
+.venv/
+
+# Python 캐시
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 백테스트 결과 HTML
+*.html
+
+# 로그 & 결과물
+logs/
+results/
+
+# 데이터 파일 (스크립트로 직접 생성)
+*.csv
+*.parquet
+data/30min/
+data/minute/
+analysis/*.csv
+analysis/*.parquet
+analysis/sig_parts/
+analysis/sig_parts_wf/
+
+# 모델 캐시
+models/*.joblib
+
+# 백테스트 결과 이미지
+*.png
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
