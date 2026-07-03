@@ -122,7 +122,30 @@ This is an equal-weight gross signal diagnostic over 49 U.S. equities, excluding
 | Market R² | 14.3% |
 | Average gross exposure | 59.8% |
 
-This result should be read as a research diagnostic, not as deployable net performance. The next research step is to add realistic costs, shorting constraints, portfolio construction, and walk-forward validation.
+### Net-Beta-Capped Portfolio
+
+Source: `analysis/portfolio_dashboard.py`
+
+The expanded portfolio experiment also tests a causal rolling CAPM beta estimate and a net beta cap. The cap scales down only the side of the book that causes excess net beta; it does not flip position signs or create new positions. The beta estimate uses prior daily closes only.
+
+Period: 2024-01-02 to 2026-05-21. Universe: 49 stocks. Gross OOS diagnostic.
+
+| Portfolio | Net Beta Cap | Cumulative Return | Annualized Return | Sharpe | MDD | Realized Beta vs SPY |
+|---|---:|---:|---:|---:|---:|---:|
+| Equal-Weight | None | +54.8% | +20.2% | 2.25 | -6.8% | -0.20 |
+| Equal-Weight BetaCap | 0.25 | +54.5% | +20.1% | 3.41 | -2.4% | -0.10 |
+| SPY Buy & Hold | n/a | +57.2% | +20.9% | 1.30 | -19.0% | 1.00 |
+
+Slippage sensitivity for `Equal-Weight BetaCap 0.25`:
+
+| One-Way Slippage | Cumulative Return | Annualized Return | Sharpe | MDD |
+|---:|---:|---:|---:|---:|
+| 0 bp | +54.5% | +20.1% | 3.41 | -2.4% |
+| 2 bp | +51.1% | +19.0% | 3.24 | -2.4% |
+| 5 bp | +46.2% | +17.3% | 2.99 | -2.5% |
+| 10 bp | +38.4% | +14.6% | 2.56 | -2.6% |
+
+This result should be read as a research diagnostic, not as deployable net performance. The next research step is to add realistic borrow constraints, market impact, point-in-time universe validation, and longer walk-forward tests including 2020 and 2022.
 
 ## Repository Structure
 
