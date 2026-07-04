@@ -25,6 +25,8 @@ Period: 2024-01-02 to 2026-05-21. Universe: 49 liquid U.S. equities. SPY is used
 
 The beta-capped portfolio kept nearly the same return as the uncapped version while materially improving drawdown and volatility. Its realized beta was close to market-neutral, so the result is better interpreted as residual alpha evidence than as a disguised SPY bet.
 
+* Sharpe Ratio is calcualted without risk free asset return. Risk free return is set to be 0, so Sharpe Ratio = Return/Volatility. Sharpe Ratio calculated with risk free return will be provided in the other section of this document. 
+
 ## Why This Looks Like Alpha, Not Market Beta
 
 The portfolio dashboard includes a single-factor CAPM regression against SPY daily returns. For the beta-capped portfolio:
@@ -121,6 +123,7 @@ Core implementation: `strategy/HMM_strategy/allocations.py`.
 - Signal timing is shifted by one bar: information available at bar `t` is executed at `open[t+1]`.
 - The portfolio dashboard uses OOS signals from `analysis/oos_signals.parquet`.
 - Transaction costs, market impact, borrow fees, and borrow availability are not fully modeled in the headline result.
+- Initial backtest design was done without the consideration of market fee and slippage, as alpaca does not impose market fee and the 49 equities in the portfolio are traded in a huge trading volume, so the size of slippage is not to be too large. However, the results with slippage are also provided. 
 
 Slippage sensitivity for the beta-capped portfolio:
 
@@ -130,6 +133,20 @@ Slippage sensitivity for the beta-capped portfolio:
 | 2 bp | +51.1% | +19.0% | 3.24 | -2.4% |
 | 5 bp | +46.2% | +17.3% | 2.99 | -2.5% |
 | 10 bp | +38.4% | +14.6% | 2.56 | -2.6% |
+
+Sharpe Sensitivity, Slippage and Risk-Free Rate:
+
+The BetaCap 0.25 portfolio remained robust under more conservative assumptions for both transaction slippage and risk-free rate.  
+Even with a 4.5% annual risk-free rate and 10bp one-way slippage, the portfolio still produced a Sharpe ratio of `1.73`.
+
+| One-Way Slippage | rf = 0% (current code) | rf = 4.0% | rf = 4.5% | rf = 5.0% |
+|---:|---:|---:|---:|---:|
+| 0bp | 3.41 | 2.67 | **2.58** | 2.49 |
+| 2bp | 3.24 | 2.50 | **2.41** | 2.32 |
+| 5bp | 2.99 | 2.25 | **2.16** | 2.06 |
+| 10bp | 2.56 | 1.82 | **1.73** | 1.63 |
+
+This sensitivity check suggests that the result is not dependent on the zero-risk-free-rate assumption used in the current backtest code. The strategy's risk-adjusted performance remains positive after applying both realistic cash-rate assumptions and moderate transaction slippage.
 
 ## Single-Name Backtest Summary
 
