@@ -4,7 +4,6 @@ HMM-based U.S. equity regime detection, backtesting, and Alpaca paper-trading re
 
 This project explores whether market-regime classification can improve trend-following strategies by adjusting exposure across bull, sideways, and bear regimes. The implementation includes feature engineering, Gaussian HMM regime labeling, supervised meta-modeling, position sizing, backtesting, portfolio diagnostics, and a paper-trading execution prototype.
 
-> Research code only. This repository is not financial advice and is not a recommendation to trade any security.
 
 ## Highlights
 
