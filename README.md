@@ -24,7 +24,7 @@ The current answer is mixed:
 
 - On the 10 single-name backtest set, the best HMM-family variant beat the standalone Donchian + ADX/R² baseline on 10 of 10 names, but beat buy-and-hold on only 3 of 10 names.
 - On a separate 49-stock equal-weight gross portfolio diagnostic, the signal set showed strong risk-adjusted performance before transaction costs.
-- The strategy still struggles against high-beta buy-and-hold winners such as NVDA, MU, and SOXL, which is expected for a regime-filtered system that reduces exposure during unstable periods.
+- With long-short portfolio, the risk exposure of whole portfolio to the market has significantly dropped(MDD less than 3%). 
 
 ## Methodology
 
@@ -47,14 +47,17 @@ Logistic meta-model for next-regime probabilities
 Position sizing: P(Bull) - P(Bear)
         |
         v
+Long-Short Portfolio with |net Beta(of CAPM)| < 0.25
+        |
+        v
 Backtest engine / Alpaca paper-trading execution
 ```
 
 The HMM labels regimes as:
 
-- `Bull`: highest average rolling cumulative return state
-- `Side`: middle state
-- `Bear`: lowest average rolling cumulative return state
+- `Bull`: highest average rolling cumulative return, high ADX
+- `Side`: middle state, low ADX
+- `Bear`: lowest average rolling cumulative return state, high ADX
 
 The meta-model can optionally use:
 
@@ -78,8 +81,6 @@ The main backtest script separates training and out-of-sample evaluation:
 
 ### Single-Name OOS Backtests
 
-Source: the detailed rows in `results/all_stocks_summary.md`
-
 Period: 2025-01-01 to 2026-05-22, 30-minute bars. The HMM column reports the best Sharpe variant among four HMM configurations.
 
 | Symbol | Best HMM Variant | HMM CAGR / Sharpe | Donchian CAGR / Sharpe | Buy & Hold CAGR / Sharpe |
@@ -100,12 +101,14 @@ Summary:
 - Best HMM-family variant beat buy-and-hold on 3 / 10 names.
 - Best HMM-family variant beat the standalone Donchian + ADX/R² baseline on 10 / 10 names.
 - The model tended to help more on names where regime shifts and drawdown control mattered, and less on strong directional winners.
-
+- The model seems to follow up the market trend well but does not seem to generate meaningful "alpha".
+---> The Idea: As the model follows up the makret trend well, by constructing a long-short portfolio which longs on the stocks classified to be "Bull" and shorts of the stocks classified to be "Bear", we can hedge the market risk while benefiting by "alpha".
+  
 ### Portfolio-Level Diagnostic
 
 Source: `analysis/oos_signals.parquet` and `analysis/portfolio_decomp.py`
 
-This is an equal-weight gross signal diagnostic over 49 U.S. equities, excluding SPY as the benchmark reference. Transaction costs, borrow constraints, and market impact are not included in this diagnostic.
+This is an equal-weight gross signal diagnostic over 49 U.S. equities, against SPY as the benchmark reference. Transaction costs, borrow constraints, and market impact are not included in this diagnostic -- as alpaca does not impose any fee and these 49 equities have very rich amount of transactions no sgnificiant amount of slippage expected. Backtesting results with slippage and fee will be added.
 
 | Metric | Value |
 |---|---:|
@@ -125,7 +128,7 @@ This is an equal-weight gross signal diagnostic over 49 U.S. equities, excluding
 
 Source: `analysis/portfolio_dashboard.py`
 
-The expanded portfolio experiment also tests a causal rolling CAPM beta estimate and a net beta cap. The cap scales down only the side of the book that causes excess net beta; it does not flip position signs or create new positions. The beta estimate uses prior daily closes only.
+The expanded portfolio experiment also tests a causal rolling CAPM beta estimate and a net beta cap. The cap scales down only the side of the book that causes excess net beta; it does not flip position signs or create new positions. The beta estimate uses prior daily closes only. 
 
 Period: 2024-01-02 to 2026-05-21. Universe: 49 stocks. Gross OOS diagnostic.
 
@@ -144,7 +147,9 @@ Slippage sensitivity for `Equal-Weight BetaCap 0.25`:
 | 5 bp | +46.2% | +17.3% | 2.99 | -2.5% |
 | 10 bp | +38.4% | +14.6% | 2.56 | -2.6% |
 
-This result should be read as a research diagnostic, not as deployable net performance. The next research step is to add realistic borrow constraints, market impact, point-in-time universe validation, and longer walk-forward tests including 2020 and 2022.
+This result should be read as a research diagnostic, not as deployable net performance. 
+The next research step is longer walk-forward tests including 2020 and 2022. Especially, the backtesting was not done on the market of long time bear the robustness of the alpha is not to be trusted fully. However, the OOS period of the backtesting does include the crash of market (2025.02 - 2025.04, 2026.03) and the return of the portfolio did not falter.
+Also, the shorting assumptions are simplified, real borrow availability and financing costs are not modeled. If possible, those limitations on shorting must be included and backtested. This is another research subject to be done. 
 
 ## Repository Structure
 
