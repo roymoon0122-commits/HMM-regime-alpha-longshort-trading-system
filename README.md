@@ -1,56 +1,281 @@
-# Regime Alpha Trading System
+# Regime Alpha Long-Short Trading System
 
-HMM-based U.S. equity regime detection, backtesting, and Alpaca paper-trading research system.
+HMM-based U.S. equity regime modeling, long-short portfolio construction, and Alpaca paper-trading research system.
 
-This project explores whether market-regime classification can improve trend-following strategies by adjusting exposure across bull, sideways, and bear regimes. The implementation includes feature engineering, Gaussian HMM regime labeling, supervised meta-modeling, position sizing, backtesting, portfolio diagnostics, and a paper-trading execution prototype.
+This project started as a single-stock Hidden Markov Model regime classifier. The main finding emerged after scaling the signals into a 49-stock long-short portfolio and constraining market exposure with a causal rolling CAPM net-beta cap.
 
+## Executive Summary
 
-## Highlights
+- Built an end-to-end quant research pipeline: 30-minute OHLCV data engineering, HMM regime labeling, supervised meta-modeling, no-lookahead backtesting, portfolio diagnostics, and Alpaca paper-trading execution.
+- Found that the single-stock HMM strategy behaved more like a regime-aware trend filter than a standalone alpha engine: it beats buy-and-hold on only 3/10 names.
+- Reframed the signal as a cross-sectional long-short portfolio problem: long stocks classified as Bull, short stocks classified as Bear, and size each position by `P(Bull) - P(Bear)`.
+- Added a causal rolling CAPM net-beta cap, `abs(sum(weight_i * beta_i)) <= 0.25`, to reduce broad market exposure without flipping signs or introducing hedge positions.
+- In the 49-stock gross OOS diagnostic, the beta-capped portfolio produced `+54.5%` cumulative return, `+20.1%` annualized return, `3.41` Sharpe, and `-2.4%` max drawdown.
+- The same beta-capped portfolio had realized market beta `-0.10` vs SPY and CAPM R2 `0.08`, suggesting the return was not primarily explained by linear market exposure.
 
-- Builds 30-minute regular-session OHLCV datasets for U.S. equities.
-- Computes rolling regime features such as cumulative return, volatility, ADX, R-squared trend quality, slope, drawdown, candle direction, and relative-volume features.
-- Trains a Gaussian HMM with K-means initialization, random restarts, transition priors, and automatic state-to-regime mapping.
-- Uses a logistic meta-model and optional retrospective label smoothing to estimate next-regime probabilities.
-- Converts regime probabilities into continuous target exposure in `[-1.0, +1.0]`.
-- Runs look-ahead-safe backtests where signals from bar `t` are executed at the next bar open.
-- Compares HMM variants against Donchian + ADX/R², MA crossover, and buy-and-hold baselines.
-- Includes an Alpaca paper-trading loop with dry-run mode, order safety checks, and GitHub Actions scheduling.
+## Key Result
 
-## Research Question
+Period: 2024-01-02 to 2026-05-21. Universe: 49 liquid U.S. equities. SPY is used as the market benchmark, not as a traded portfolio member. Results below are gross research diagnostics.
 
-Can a regime-aware trend system improve drawdown control or risk-adjusted returns compared with simpler trend-following baselines?
+| Portfolio | Net Beta Cap | Cumulative Return | Annualized Return | Sharpe | Max Drawdown | Realized Beta vs SPY |
+|---|---:|---:|---:|---:|---:|---:|
+| Equal-Weight Long-Short | None | +54.8% | +20.2% | 2.25 | -6.8% | -0.20 |
+| Equal-Weight Long-Short | 0.25 | +54.5% | +20.1% | 3.41 | -2.4% | -0.10 |
+| SPY Buy & Hold | n/a | +57.2% | +20.9% | 1.30 | -19.0% | 1.00 |
 
-The current answer is mixed:
+The beta-capped portfolio kept nearly the same return as the uncapped version while materially improving drawdown and volatility. Its realized beta was close to market-neutral, so the result is better interpreted as residual alpha evidence than as a disguised SPY bet.
 
-- On the 10 single-name backtest set, the best HMM-family variant beat the standalone Donchian + ADX/R² baseline on 10 of 10 names, but beat buy-and-hold on only 3 of 10 names.
-- On a separate 49-stock equal-weight gross portfolio diagnostic, the signal set showed strong risk-adjusted performance before transaction costs.
-- With long-short portfolio, the risk exposure of whole portfolio to the market has significantly dropped(MDD less than 3%). 
+## Why This Looks Like Alpha, Not Market Beta
+
+The portfolio dashboard includes a single-factor CAPM regression against SPY daily returns. For the beta-capped portfolio:
+
+| CAPM Diagnostic | Equal-Weight Long-Short | Beta-Capped Long-Short |
+|---|---:|---:|
+| Realized beta | -0.20 | -0.10 |
+| Annualized alpha | +22.9% | +20.5% |
+| Correlation vs SPY | -0.38 | -0.29 |
+| R2 vs SPY | 0.15 | 0.08 |
+| Market beta contribution | -9.9% | -4.9% |
+| Residual alpha contribution | +54.4% | +48.7% |
+
+Because SPY rose strongly over the same period, a realized beta of `-0.10` would not explain the portfolio's positive return. In this single-factor decomposition, the estimated market contribution was negative while the residual component was strongly positive. This does not prove pure stock-selection alpha, because other factor exposures may be embedded in the residual, but it is strong evidence that the result was not driven by broad market beta.
+
+## Research Path
+
+The first version applied HMM regime classification to individual stocks. That produced mixed results:
+
+- The best HMM-family variant beat the standalone Donchian + ADX/R2 trend baseline on 10/10 tested names.
+- It beat buy-and-hold on only 3/10 names.
+- It struggled against high-beta momentum winners such as NVDA, MU, and SOXL, where holding the asset through the bull trend was hard to beat.
+
+That failure mode was useful. It suggested the HMM was detecting trend regimes, but the single-name framing was asking the wrong question. Instead of using the model to decide whether one stock should beat its own buy-and-hold path, I used the regime scores to construct a diversified long-short book across many stocks.
+
+The portfolio version asks a different question:
+
+> Can regime signals identify a basket of stronger-trending stocks to long and weaker or bear-regime stocks to short, while keeping broad market beta small?
+
+That reframing is where the performance improved most.
 
 ## Methodology
 
 ```text
-30-minute OHLCV data
+30-minute regular-session OHLCV data
         |
         v
 Rolling feature engineering
         |
         v
-Rolling normalization + HMM regime labeling
+Gaussian HMM regime labeling
         |
         v
-ADX / R-squared classifiers + transition features + RVOL features
+ADX / R2 classifiers + transition features + RVOL features
         |
         v
 Logistic meta-model for next-regime probabilities
         |
         v
-Position sizing: P(Bull) - P(Bear)
+Continuous signal: P(Bull) - P(Bear)
         |
         v
-Long-Short Portfolio with |net Beta(of CAPM)| < 0.25
+49-stock long-short portfolio
         |
         v
-Backtest engine / Alpaca paper-trading execution
+Causal rolling CAPM net-beta cap
+        |
+        v
+Backtest diagnostics / Alpaca paper-trading prototype
+```
+
+The HMM states are mapped by their realized regime characteristics:
+
+- `Bull`: highest rolling cumulative return state, usually stronger trend quality.
+- `Side`: middle state, usually lower trend strength.
+- `Bear`: lowest rolling cumulative return state.
+
+The meta-model can use HMM posterior probabilities, transition priors, ADX/R2 regime classifier probabilities, rolling price-window features, and time-of-day adjusted relative-volume features.
+
+## Portfolio Construction
+
+For each symbol, the model produces a continuous signal in `[-1.0, +1.0]`:
+
+```text
+signal_i = P_i(Bull) - P_i(Bear)
+raw_weight_i = allocation_i * signal_i
+```
+
+The current diagnostic uses equal risk budget per stock before signal scaling. After raw weights are created, a no-lookahead rolling beta model estimates each stock's CAPM beta against SPY using prior daily closes only. If the portfolio's estimated net beta exceeds the configured cap, the allocator scales down only the side of the book that creates excess beta.
+
+Important implementation constraints:
+
+- No future returns are used in beta estimation.
+- The beta cap does not flip position signs.
+- The beta cap does not create new hedge positions.
+- SPY is used as the benchmark for beta estimation, not as a traded asset.
+
+Core implementation: `strategy/HMM_strategy/allocations.py`.
+
+## Backtest Design
+
+- Training data and test data are separated by explicit dates.
+- Warm-up bars are included for rolling features but excluded from reported OOS statistics.
+- Signal timing is shifted by one bar: information available at bar `t` is executed at `open[t+1]`.
+- The portfolio dashboard uses OOS signals from `analysis/oos_signals.parquet`.
+- Transaction costs, market impact, borrow fees, and borrow availability are not fully modeled in the headline result.
+
+Slippage sensitivity for the beta-capped portfolio:
+
+| One-Way Slippage | Cumulative Return | Annualized Return | Sharpe | Max Drawdown |
+|---:|---:|---:|---:|---:|
+| 0 bp | +54.5% | +20.1% | 3.41 | -2.4% |
+| 2 bp | +51.1% | +19.0% | 3.24 | -2.4% |
+| 5 bp | +46.2% | +17.3% | 2.99 | -2.5% |
+| 10 bp | +38.4% | +14.6% | 2.56 | -2.6% |
+
+## Single-Name Backtest Summary
+
+Period: 2025-01-01 to 2026-05-22, 30-minute bars. The HMM column reports the best Sharpe variant among four HMM configurations.
+
+| Result | Count |
+|---|---:|
+| HMM-family variant beat Donchian + ADX/R2 baseline | 10 / 10 |
+| HMM-family variant beat buy-and-hold | 3 / 10 |
+
+This is why the README emphasizes portfolio construction rather than only single-name model accuracy. The alpha became more visible after the signal was diversified across a long-short book.
+
+## Interactive Dashboard
+
+The portfolio dashboard is generated by:
+
+```bash
+python analysis/portfolio_dashboard.py
+```
+
+Local output:
+
+```text
+results/portfolio_dashboard.html
+```
+
+The dashboard contains:
+
+- Equal-weight vs beta-capped equity curves.
+- SPY buy-and-hold comparison.
+- Slippage sensitivity tables.
+- CAPM regression decomposition.
+- Hoverable daily long/short holdings and net beta diagnostics.
+
+For a public GitHub portfolio, I would keep the README concise and publish the full dashboard separately through one of these routes:
+
+- GitHub Pages HTML dashboard.
+- A `docs/backtest-report.md` research write-up with selected charts.
+- Static screenshots in `docs/assets/` plus the generated HTML as a downloadable artifact.
+
+## Repository Structure
+
+```text
+.
+├── strategy/
+│   ├── HMM_strategy/
+│   │   ├── classifiers/       # ADX and R2 regime classifiers
+│   │   ├── features/          # rolling price, trend, scaler, and RVOL features
+│   │   ├── meta_model/        # logistic meta-model wrapper
+│   │   ├── position/          # probability-to-position sizing
+│   │   ├── regime/            # HMM labeler, transition model, label smoother
+│   │   ├── scripts/           # feature and regime verification utilities
+│   │   ├── allocations.py     # portfolio allocation and net-beta cap logic
+│   │   ├── config.py          # experiment and live-trading configuration
+│   │   └── strategy.py        # integrated HMM strategy
+│   ├── donchian_adx_r2_B.py   # trend-following baseline and hybrid filter
+│   └── ma_cross.py            # moving-average baseline
+├── backtester/                # single-name and continuous-position backtest tools
+├── analysis/                  # OOS signal extraction and portfolio diagnostics
+├── data/                      # data fetch and 30-minute resampling scripts
+├── tests/                     # HMM, allocation, and live-guard tests
+├── run_backtest_hmm.py
+├── run_all_backtests.py
+└── live_trade.py
+```
+
+## Quickstart
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Run tests:
+
+```bash
+pytest
+```
+
+Run one HMM backtest:
+
+```bash
+python run_backtest_hmm.py \
+  --csv-path data/30min/NVDA_20210101_20260527_30min.parquet \
+  --hmm-cache models/hmm_nvda.joblib \
+  --output-html results/backtest_hmm_NVDA.html
+```
+
+Run selected symbols:
+
+```bash
+python run_all_backtests.py --symbols AAPL GOOGL META MSFT NVDA TSLA
+```
+
+Run Alpaca paper-trading in dry-run mode:
+
+```bash
+python live_trade.py --once
+```
+
+Submit paper orders:
+
+```bash
+python live_trade.py --once --execute
+```
+
+## Alpaca Setup
+
+Create a local `.env` file:
+
+```text
+ALPACA_API_KEY=your_key
+ALPACA_SECRET_KEY=your_secret
+```
+
+The live trading script connects with `paper=True`. By default, it runs in dry-run mode and prints intended orders without submitting them.
+
+## What This Project Demonstrates
+
+- Quant research process: turning a weak single-name result into a stronger portfolio-level hypothesis.
+- Time-series ML implementation with explicit leakage controls.
+- Portfolio risk control using rolling beta estimation and constrained allocation.
+- Research engineering around generated data, reproducible diagnostics, and test coverage.
+- Practical execution concerns for paper trading, including dry-run behavior and order safety checks.
+
+## Limitations And Next Steps
+
+- The headline portfolio result is gross of full transaction costs, borrow fees, borrow constraints, financing costs, and market impact.
+- The OOS window is still limited and should be extended through 2020 and 2022 bear-market regimes.
+- The universe is based on liquid large-cap equities; point-in-time membership and survivorship-bias handling should be documented more rigorously for final publication.
+- CAPM residual alpha may include other factor exposures; a multi-factor regression would be a natural next step.
+- Paper trading validates execution plumbing, not live alpha.
+
+## Tech Stack
+
+- Python
+- pandas, NumPy, pyarrow
+- scikit-learn, hmmlearn, joblib
+- Plotly, matplotlib
+- alpaca-py
+- pytest
+
+## Status
+
+Research prototype. The main current result is a portfolio-level OOS diagnostic showing that regime signals became more informative after cross-sectional long-short aggregation and explicit net-beta control.
 ```
 
 The HMM labels regimes as:
