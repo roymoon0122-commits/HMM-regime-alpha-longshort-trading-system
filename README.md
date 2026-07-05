@@ -17,6 +17,7 @@ This project started as a single-stock Hidden Markov Model regime classifier. Th
 - [Portfolio Dashboard HTML](https://github.com/SNU-quant-project/Stock-trader/blob/5e94f9ada82a6511727487ebb52da23eff742ac4/results/portfolio_dashboard.html)
   <img width="2264" height="1052" alt="image" src="https://github.com/user-attachments/assets/95a8e0df-d7ca-483e-ba20-0cf2feefaf9d" />
   <img width="2940" height="1064" alt="image" src="https://github.com/user-attachments/assets/032631d3-1f45-4610-948c-4b8c3873957b" />
+  red line: return of portfolio with |net Beta| < 0.25
 
 
 
