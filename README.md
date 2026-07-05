@@ -13,7 +13,12 @@ This project started as a single-stock Hidden Markov Model regime classifier. Th
 - In the 49-stock gross OOS diagnostic, the beta-capped portfolio produced `+54.5%` cumulative return, `+20.1%` annualized return, `3.41` Sharpe, and `-2.4%` max drawdown.
 - The same beta-capped portfolio had realized market beta `-0.10` vs SPY and CAPM R2 `0.08`, suggesting the return was not primarily explained by linear market exposure.
 
-## Key Result
+## Key Result & Visualization
+- [Portfolio Dashboard HTML](https://github.com/SNU-quant-project/Stock-trader/blob/5e94f9ada82a6511727487ebb52da23eff742ac4/results/portfolio_dashboard.html)
+  <img width="2264" height="1052" alt="image" src="https://github.com/user-attachments/assets/95a8e0df-d7ca-483e-ba20-0cf2feefaf9d" />
+  <img width="2940" height="1064" alt="image" src="https://github.com/user-attachments/assets/032631d3-1f45-4610-948c-4b8c3873957b" />
+
+
 
 Period: 2024-01-02 to 2026-05-21. Universe: 49 liquid U.S. equities. SPY is used as the market benchmark, not as a traded portfolio member. Results below are gross research diagnostics.
 
