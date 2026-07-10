@@ -1,4 +1,4 @@
-# ── Alpaca 연동 / 데이터 ──────────────────────────
+# Alpaca integration / data
 alpaca-py
 python-dotenv
 pandas
@@ -7,11 +7,14 @@ lxml
 pyarrow
 requests
 
-# ── HMM 알파 (Coin-trader 이식) ───────────────────
+# HMM alpha
 hmmlearn
 scikit-learn
 joblib
 
-# ── 시각화 ────────────────────────────────────────
+# Visualization
 matplotlib
 plotly
+
+# Testing
+pytest
